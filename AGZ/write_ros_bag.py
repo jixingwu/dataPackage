@@ -14,6 +14,7 @@ import sys
 from cv_bridge import CvBridge, CvBridgeError
 import numpy as np
 
+MAVIMAGE = 1000
 
 def main(argv):
 
@@ -33,9 +34,7 @@ def main(argv):
     gtl = csv.reader(open(sys.argv[1] + "/LogFiles_tmp/GroundTruthAGL.csv"))
     bap = csv.reader(open(sys.argv[1] + "/LogFiles_tmp/BarometricPressure.csv"))
     onp = csv.reader(open(sys.argv[1] + "/LogFiles_tmp/OnboardPose.csv"))
-lll
-lll
-lll
+
     ral_seq = 0
     bap_seq = 0
     cal = -1
@@ -91,9 +90,6 @@ lll
         bag.write('/groundtruth/image', Img)
 
 
-    MAV_IMAGE = 27050
-    print("Package MAVimages...")
-
     for bap_data in bap:
         bap_seq = bap_seq + 1
         bar = Barometer()
@@ -105,9 +101,23 @@ lll
         bag.write('/barometric_pressure', bar)
 
 
-    print("Packaging GPS, MAV images and Caminfo")
+    # print("packaging MAV images")
+    # for mavimage in range(1,MAVIMAGE):
+    #     print(mavimage)
+    #     img_cv = cv2.imread(sys.argv[1] + "/MAV Images/" + '{0:05d}'.format(mavimage) + ".jpg", 1)
+    #     br = CvBridge()
+    #     Img = Image()
+    #     Img = br.cv2_to_imgmsg(img_cv, "bgr8")
+    #     # print(type(Img))
+    #     Img.header.seq = mavimage
+    #     # Img.header.stamp = timestamp
+    #     Img.header.frame_id = 'camera'
+    #     bag.write('/camera/image', Img)
+
+
+    print("Packaging GPS and Caminfo")
     for gps_data in gps:
-        print(int(gps_data[1]))
+        # print(int(gps_data[1]))
         # On board GPS processing
         imgid = int(gps_data[1])
         # gps_seq = gps_seq + 1
@@ -129,16 +139,18 @@ lll
         # print("gps")
         # MAV image processing
 
+        if int(gps_data[1]) <= MAVIMAGE:
+            img_cv = cv2.imread(sys.argv[1] + "/MAV Images/" + '{0:05d}'.format(int(gps_data[1])) + ".jpg", 1)
+            br = CvBridge()
+            print (gps_data[1])
+            Img = Image()
+            Img = br.cv2_to_imgmsg(img_cv, "bgr8")
+            # print(type(Img))
+            Img.header.seq = imgid
+            Img.header.stamp = timestamp
+            Img.header.frame_id = 'camera'
+            bag.write('/camera/image', Img, t=timestamp)
 
-        img_cv = cv2.imread(sys.argv[1] + "/MAV Images/" + '{0:05d}'.format(int(gps_data[1])) + ".jpg", 1)
-        br = CvBridge()
-        Img = Image()
-        Img = br.cv2_to_imgmsg(img_cv, "bgr8")
-        # print(type(Img))
-        Img.header.seq = imgid
-        Img.header.stamp = timestamp
-        Img.header.frame_id = 'camera'
-        bag.write('/camera/image', Img, t=timestamp)
         if cal < 0:
             Caminfo = CameraInfo()
             cam_data = np.load(sys.argv[1] + '/calibration_data.npz')
@@ -155,6 +167,8 @@ lll
             bag.write('/camera/camera_info', Caminfo, t=timestamp)
             cal = 0
             # print("cal")
+
+
     bag.close()
 
     return 0
