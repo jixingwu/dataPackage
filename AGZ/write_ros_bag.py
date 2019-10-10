@@ -15,6 +15,7 @@ from cv_bridge import CvBridge, CvBridgeError
 import numpy as np
 
 MAVIMAGE = 1000
+MAVDIM = (720, 480)
 
 def main(argv):
 
@@ -141,6 +142,9 @@ def main(argv):
 
         if int(gps_data[1]) <= MAVIMAGE:
             img_cv = cv2.imread(sys.argv[1] + "/MAV Images/" + '{0:05d}'.format(int(gps_data[1])) + ".jpg", 1)
+
+            img_cv = cv2.resize(img_cv, MAVDIM, interpolation=cv2.INTER_AREA)
+
             br = CvBridge()
             print (gps_data[1])
             Img = Image()
