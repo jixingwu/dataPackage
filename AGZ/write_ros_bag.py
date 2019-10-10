@@ -69,6 +69,37 @@ def main(argv):
 
         bag.write('/Imu', imu, t=timestamp)
 
+        if int(ral_seq) <= MAVIMAGE:
+            img_cv = cv2.imread(sys.argv[1] + "/MAV Images/" + '{0:05d}'.format(int(ral_seq)) + ".jpg", 1)
+
+            img_cv = cv2.resize(img_cv, MAVDIM, interpolation=cv2.INTER_AREA)
+
+            br = CvBridge()
+            print (ral_seq)
+            Img = Image()
+            Img = br.cv2_to_imgmsg(img_cv, "bgr8")
+            # print(type(Img))
+            Img.header.seq = ral_seq
+            Img.header.stamp = timestamp
+            Img.header.frame_id = 'camera'
+            bag.write('/camera/image', Img, t=timestamp)
+
+        if cal < 0:
+            Caminfo = CameraInfo()
+            cam_data = np.load(sys.argv[1] + '/calibration_data.npz')
+            Caminfo.R = [1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0]
+            Caminfo.P = [1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0]
+            Caminfo.D = np.asarray(cam_data['distCoeff']).reshape(-1)
+            Caminfo.K = np.asarray(cam_data['intrinsic_matrix']).reshape(-1)
+            Caminfo.binning_x = 1
+            Caminfo.binning_y = 1
+            img_cv_h, img_cv_w = img_cv.shape[:2]
+            Caminfo.width = img_cv_w
+            Caminfo.height = img_cv_h
+            Caminfo.distortion_model = 'plumb_bob'
+            bag.write('/camera/camera_info', Caminfo, t=timestamp)
+            cal = 0
+
 
 
     print("Package groundtruthAGM...")
@@ -140,37 +171,37 @@ def main(argv):
         # print("gps")
         # MAV image processing
 
-        if int(gps_data[1]) <= MAVIMAGE:
-            img_cv = cv2.imread(sys.argv[1] + "/MAV Images/" + '{0:05d}'.format(int(gps_data[1])) + ".jpg", 1)
+        # if int(gps_data[1]) <= MAVIMAGE:
+        #     img_cv = cv2.imread(sys.argv[1] + "/MAV Images/" + '{0:05d}'.format(int(gps_data[1])) + ".jpg", 1)
+        #
+        #     img_cv = cv2.resize(img_cv, MAVDIM, interpolation=cv2.INTER_AREA)
+        #
+        #     br = CvBridge()
+        #     print (gps_data[1])
+        #     Img = Image()
+        #     Img = br.cv2_to_imgmsg(img_cv, "bgr8")
+        #     # print(type(Img))
+        #     Img.header.seq = imgid
+        #     Img.header.stamp = timestamp
+        #     Img.header.frame_id = 'camera'
+        #     bag.write('/camera/image', Img, t=timestamp)
+        #
+        # if cal < 0:
+        #     Caminfo = CameraInfo()
+        #     cam_data = np.load(sys.argv[1] + '/calibration_data.npz')
+        #     Caminfo.R = [1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0]
+        #     Caminfo.P = [1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0]
+        #     Caminfo.D = np.asarray(cam_data['distCoeff']).reshape(-1)
+        #     Caminfo.K = np.asarray(cam_data['intrinsic_matrix']).reshape(-1)
+        #     Caminfo.binning_x = 1
+        #     Caminfo.binning_y = 1
+        #     img_cv_h, img_cv_w = img_cv.shape[:2]
+        #     Caminfo.width = img_cv_w
+        #     Caminfo.height = img_cv_h
+        #     Caminfo.distortion_model = 'plumb_bob'
+        #     bag.write('/camera/camera_info', Caminfo, t=timestamp)
+        #     cal = 0
 
-            img_cv = cv2.resize(img_cv, MAVDIM, interpolation=cv2.INTER_AREA)
-
-            br = CvBridge()
-            print (gps_data[1])
-            Img = Image()
-            Img = br.cv2_to_imgmsg(img_cv, "bgr8")
-            # print(type(Img))
-            Img.header.seq = imgid
-            Img.header.stamp = timestamp
-            Img.header.frame_id = 'camera'
-            bag.write('/camera/image', Img, t=timestamp)
-
-        if cal < 0:
-            Caminfo = CameraInfo()
-            cam_data = np.load(sys.argv[1] + '/calibration_data.npz')
-            Caminfo.R = [1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0]
-            Caminfo.P = [1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0]
-            Caminfo.D = np.asarray(cam_data['distCoeff']).reshape(-1)
-            Caminfo.K = np.asarray(cam_data['intrinsic_matrix']).reshape(-1)
-            Caminfo.binning_x = 1
-            Caminfo.binning_y = 1
-            img_cv_h, img_cv_w = img_cv.shape[:2]
-            Caminfo.width = img_cv_w
-            Caminfo.height = img_cv_h
-            Caminfo.distortion_model = 'plumb_bob'
-            bag.write('/camera/camera_info', Caminfo, t=timestamp)
-            cal = 0
-            # print("cal")
 
 
     bag.close()
