@@ -14,7 +14,7 @@ import sys
 from cv_bridge import CvBridge, CvBridgeError
 import numpy as np
 
-MAVIMAGE = 1000
+MAVIMAGE = 207050
 MAVDIM = (720, 480)
 
 def main(argv):
