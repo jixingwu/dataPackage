@@ -25,5 +25,5 @@ for i=1:row_imgid
    
 end
 
-writematrix(outFile, 'groundtruth.csv');
+writematrix(outFile, 'groundtruth.txt');
  
