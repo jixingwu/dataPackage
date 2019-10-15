@@ -14,8 +14,8 @@ import sys
 from cv_bridge import CvBridge, CvBridgeError
 import numpy as np
 
-MAVIMAGE = 207050
-MAVDIM = (720, 480)
+MAVIMAGE = 5000
+MAVDIM = (1280, 720)
 
 def main(argv):
 
@@ -27,7 +27,7 @@ def main(argv):
         print 'Please specify output rosbag file'
         return 1
     bag = rosbag.Bag(sys.argv[2], 'w')
-
+1280
     ral = csv.reader(open(sys.argv[1] + "/LogFiles_tmp/RawAccel.csv"))
     rgo = csv.reader(open(sys.argv[1] + "/LogFiles_tmp/RawGyro.csv"))
     gps = csv.reader(open(sys.argv[1] + "/LogFiles_tmp/OnboardGPS.csv"))

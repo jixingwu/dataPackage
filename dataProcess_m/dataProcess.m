@@ -25,5 +25,5 @@ for i=1:row_imgid
    
 end
 
-writematrix(outFile, 'groundtruth.txt');
+writematrix(outFile, 'groundtruth.txt', 'Delimiter', ' ');
  
