@@ -16,7 +16,7 @@ import numpy as np
 
 MAVIMAGE = 5000
 MAVDIM = (1280, 720)
-global TIMESTAMP
+TIMESTAMP = []
 
 def main(argv):
 
@@ -51,7 +51,8 @@ def main(argv):
         ral_seq = ral_seq + 1
         utime = int(ral_data[0])
         timestamp = rospy.Time.from_sec(utime/1e6)
-        TIMESTAMP = timestamp
+        TIMESTAMP.append(timestamp)
+
 
         header = Header()
         header.seq = ral_seq
@@ -77,20 +78,20 @@ def main(argv):
 
         bag.write('/Imu', imu, t=timestamp)
 
-        if int(ral_seq)%3 == 0 and int(ral_seq) <= MAVIMAGE:
-            img_cv = cv2.imread(sys.argv[1] + "/MAV Images/" + '{0:05d}'.format(int(ral_seq)) + ".jpg", 1)
-
-            img_cv = cv2.resize(img_cv, MAVDIM, interpolation=cv2.INTER_AREA)
-
-            br = CvBridge()
-            print (ral_seq)
-            Img = Image()
-            Img = br.cv2_to_imgmsg(img_cv, "bgr8")
-            # print(type(Img))
-            Img.header.seq = ral_seq
-            Img.header.stamp = timestamp
-            Img.header.frame_id = 'camera'
-            bag.write('/camera/image', Img, t=timestamp)
+        # if int(ral_seq)%3 == 0 and int(ral_seq) <= MAVIMAGE:
+        #     img_cv = cv2.imread(sys.argv[1] + "/MAV Images/" + '{0:05d}'.format(int(ral_seq)) + ".jpg", 1)
+        #
+        #     img_cv = cv2.resize(img_cv, MAVDIM, interpolation=cv2.INTER_AREA)
+        #
+        #     br = CvBridge()
+        #     print (ral_seq)
+        #     Img = Image()
+        #     Img = br.cv2_to_imgmsg(img_cv, "bgr8")
+        #     # print(type(Img))
+        #     Img.header.seq = ral_seq
+        #     Img.header.stamp = timestamp
+        #     Img.header.frame_id = 'camera'
+        #     bag.write('/camera/image', Img, t=timestamp)
 
         # if cal < 0:
         #     Caminfo = CameraInfo()
@@ -107,6 +108,32 @@ def main(argv):
         #     Caminfo.distortion_model = 'plumb_bob'
         #     bag.write('/camera/camera_info', Caminfo, t=timestamp)
         #     cal = 0
+
+    # print(type(TIMESTAMP[1]))
+    # print(np.size(TIMESTAMP))
+    imageCount = 81169
+    imuCound = np.size(TIMESTAMP)
+    index = 0
+
+    for i in range(1, imageCount):
+
+        if int(i) % 3 == 0:
+            print(i)
+            if index >= imuCound:
+                break
+            img_cv = cv2.imread(sys.argv[1] + "/MAV Images/" + '{0:05d}'.format(int(i)) + ".jpg", 1)
+            img_cv = cv2.resize(img_cv, MAVDIM, interpolation=cv2.INTER_AREA)
+            br = CvBridge()
+            Img = Image()
+            Img = br.cv2_to_imgmsg(img_cv, "bgr8")
+            # print(type(Img))
+            Img.header.seq = index
+            Img.header.stamp = TIMESTAMP[index]
+            Img.header.frame_id = 'camera'
+            bag.write('/camera/image', Img, t=TIMESTAMP[index])
+            index = index + 1
+
+
 
 
 
