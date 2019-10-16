@@ -16,6 +16,7 @@ import numpy as np
 
 MAVIMAGE = 5000
 MAVDIM = (1280, 720)
+global TIMESTAMP
 
 def main(argv):
 
@@ -27,7 +28,6 @@ def main(argv):
         print 'Please specify output rosbag file'
         return 1
     bag = rosbag.Bag(sys.argv[2], 'w')
-1280
     ral = csv.reader(open(sys.argv[1] + "/LogFiles_tmp/RawAccel.csv"))
     rgo = csv.reader(open(sys.argv[1] + "/LogFiles_tmp/RawGyro.csv"))
     gps = csv.reader(open(sys.argv[1] + "/LogFiles_tmp/OnboardGPS.csv"))
@@ -35,20 +35,23 @@ def main(argv):
     gtl = csv.reader(open(sys.argv[1] + "/LogFiles_tmp/GroundTruthAGL.csv"))
     bap = csv.reader(open(sys.argv[1] + "/LogFiles_tmp/BarometricPressure.csv"))
     onp = csv.reader(open(sys.argv[1] + "/LogFiles_tmp/OnboardPose.csv"))
+    ori = csv.reader(open(sys.argv[1] + "/LogFiles_tmp/RawOrien.csv"))
 
     ral_seq = 0
     bap_seq = 0
+    img_seq = 0
     cal = -1
     gps_seq = 0
     # IMAGE_COUNT = 81169
     STREET_VIEW = 113
 
     print("Packaging Imu...")
-    for ral_data, rgo_data in zip(ral, rgo):
+    for ral_data, rgo_data, ori_data in zip(ral, rgo, ori):
 
         ral_seq = ral_seq + 1
         utime = int(ral_data[0])
         timestamp = rospy.Time.from_sec(utime/1e6)
+        TIMESTAMP = timestamp
 
         header = Header()
         header.seq = ral_seq
@@ -67,9 +70,14 @@ def main(argv):
         imu.angular_velocity.z = float(rgo_data[4])
         imu.angular_velocity_covariance = np.zeros(9)
 
+        imu.orientation.w = float(ori_data[1])
+        imu.orientation.x = float(ori_data[2])
+        imu.orientation.y = float(ori_data[3])
+        imu.orientation.z = float(ori_data[4])
+
         bag.write('/Imu', imu, t=timestamp)
 
-        if int(ral_seq) <= MAVIMAGE:
+        if int(ral_seq)%3 == 0 and int(ral_seq) <= MAVIMAGE:
             img_cv = cv2.imread(sys.argv[1] + "/MAV Images/" + '{0:05d}'.format(int(ral_seq)) + ".jpg", 1)
 
             img_cv = cv2.resize(img_cv, MAVDIM, interpolation=cv2.INTER_AREA)
@@ -84,21 +92,21 @@ def main(argv):
             Img.header.frame_id = 'camera'
             bag.write('/camera/image', Img, t=timestamp)
 
-        if cal < 0:
-            Caminfo = CameraInfo()
-            cam_data = np.load(sys.argv[1] + '/calibration_data.npz')
-            Caminfo.R = [1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0]
-            Caminfo.P = [1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0]
-            Caminfo.D = np.asarray(cam_data['distCoeff']).reshape(-1)
-            Caminfo.K = np.asarray(cam_data['intrinsic_matrix']).reshape(-1)
-            Caminfo.binning_x = 1
-            Caminfo.binning_y = 1
-            img_cv_h, img_cv_w = img_cv.shape[:2]
-            Caminfo.width = img_cv_w
-            Caminfo.height = img_cv_h
-            Caminfo.distortion_model = 'plumb_bob'
-            bag.write('/camera/camera_info', Caminfo, t=timestamp)
-            cal = 0
+        # if cal < 0:
+        #     Caminfo = CameraInfo()
+        #     cam_data = np.load(sys.argv[1] + '/calibration_data.npz')
+        #     Caminfo.R = [1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0]
+        #     Caminfo.P = [1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0]
+        #     Caminfo.D = np.asarray(cam_data['distCoeff']).reshape(-1)
+        #     Caminfo.K = np.asarray(cam_data['intrinsic_matrix']).reshape(-1)
+        #     Caminfo.binning_x = 1
+        #     Caminfo.binning_y = 1
+        #     img_cv_h, img_cv_w = img_cv.shape[:2]
+        #     Caminfo.width = img_cv_w
+        #     Caminfo.height = img_cv_h
+        #     Caminfo.distortion_model = 'plumb_bob'
+        #     bag.write('/camera/camera_info', Caminfo, t=timestamp)
+        #     cal = 0
 
 
 
