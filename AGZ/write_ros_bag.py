@@ -14,8 +14,9 @@ import sys
 from cv_bridge import CvBridge, CvBridgeError
 import numpy as np
 
-MAVIMAGE = 5000
+MAVIMAGE = 2000
 MAVDIM = (1280, 720)
+# MAVDIM = (1920, 1080)
 TIMESTAMP = []
 
 def main(argv):
@@ -36,62 +37,52 @@ def main(argv):
     bap = csv.reader(open(sys.argv[1] + "/LogFiles_tmp/BarometricPressure.csv"))
     onp = csv.reader(open(sys.argv[1] + "/LogFiles_tmp/OnboardPose.csv"))
     ori = csv.reader(open(sys.argv[1] + "/LogFiles_tmp/RawOrien.csv"))
+    pos = csv.reader(open(sys.argv[1] + "/LogFiles_tmp/OnboardPose.csv"))
+
 
     ral_seq = 0
     bap_seq = 0
     img_seq = 0
+    pos_seq = 0
     cal = -1
     gps_seq = 0
     # IMAGE_COUNT = 81169
     STREET_VIEW = 113
 
-    print("Packaging Imu...")
-    for ral_data, rgo_data, ori_data in zip(ral, rgo, ori):
+    print("packageing Imu for OnboardPose.csv ...")
 
-        ral_seq = ral_seq + 1
-        utime = int(ral_data[0])
+    for pos_data in pos:
+        pos_seq = pos_seq + 1
+        utime = int(pos_data[0])
         timestamp = rospy.Time.from_sec(utime/1e6)
-        TIMESTAMP.append(timestamp)
-
-
-        header = Header()
-        header.seq = ral_seq
-        header.stamp = timestamp
-        header.frame_id = 'imu'
 
         imu = Imu()
-        imu.header = header
-        imu.linear_acceleration.x = float(ral_data[2])
-        imu.linear_acceleration.y = float(ral_data[3])
-        imu.linear_acceleration.z = float(ral_data[4])
+        imu.header.seq = pos_seq
+        imu.header.stamp = timestamp
+        imu.header.frame_id = '/Imu'
+
+        imu.linear_acceleration.x = float(pos_data[4])
+        imu.linear_acceleration.y = float(pos_data[5])
+        imu.linear_acceleration.z = float(pos_data[6])
         imu.linear_acceleration_covariance = np.zeros(9)
 
-        imu.angular_velocity.x = float(rgo_data[2])
-        imu.angular_velocity.y = float(rgo_data[3])
-        imu.angular_velocity.z = float(rgo_data[4])
+        imu.angular_velocity.x = float(pos_data[1])
+        imu.angular_velocity.y = float(pos_data[2])
+        imu.angular_velocity.z = float(pos_data[3])
         imu.angular_velocity_covariance = np.zeros(9)
 
-        imu.orientation.w = float(ori_data[1])
-        imu.orientation.x = float(ori_data[2])
-        imu.orientation.y = float(ori_data[3])
-        imu.orientation.z = float(ori_data[4])
+        imu.orientation.w = float(pos_data[14])
+        imu.orientation.x = float(pos_data[15])
+        imu.orientation.y = float(pos_data[16])
+        imu.orientation.z = float(pos_data[17])
 
         bag.write('/Imu', imu, t=timestamp)
 
-        # if int(ral_seq)%3 == 0 and int(ral_seq) <= MAVIMAGE:
-        #     img_cv = cv2.imread(sys.argv[1] + "/MAV Images/" + '{0:05d}'.format(int(ral_seq)) + ".jpg", 1)
-        #
-        #     img_cv = cv2.resize(img_cv, MAVDIM, interpolation=cv2.INTER_AREA)
-        #
-        #     br = CvBridge()
-        #     print (ral_seq)
-        #     Img = Image()
-        #     Img = br.cv2_to_imgmsg(img_cv, "bgr8")
-        #     # print(type(Img))
-        #     Img.header.seq = ral_seq
-        #     Img.header.stamp = timestamp
-        #     Img.header.frame_id = 'camera'
-        #     bag.write('/camera/image', Img, t=timestamp)
+        pos_seq = pos_seq + 1
+        imu.header.seq = pos_seq
+        bag.write('/Imu', imu, t=timestamp)
+
+
 
         # if cal < 0:
         #     Caminfo = CameraInfo()
@@ -109,40 +100,11 @@ def main(argv):
         #     bag.write('/camera/camera_info', Caminfo, t=timestamp)
         #     cal = 0
 
-    # print(type(TIMESTAMP[1]))
-    # print(np.size(TIMESTAMP))
-    imageCount = 81169
-    imuCound = np.size(TIMESTAMP)
-    index = 0
-
-    for i in range(1, imageCount):
-
-        if int(i) % 3 == 0:
-            print(i)
-            if index >= imuCound:
-                break
-            img_cv = cv2.imread(sys.argv[1] + "/MAV Images/" + '{0:05d}'.format(int(i)) + ".jpg", 1)
-            img_cv = cv2.resize(img_cv, MAVDIM, interpolation=cv2.INTER_AREA)
-            br = CvBridge()
-            Img = Image()
-            Img = br.cv2_to_imgmsg(img_cv, "bgr8")
-            # print(type(Img))
-            Img.header.seq = index
-            Img.header.stamp = TIMESTAMP[index]
-            Img.header.frame_id = 'camera'
-            bag.write('/camera/image', Img, t=TIMESTAMP[index])
-            index = index + 1
-
-
-
-
-
     print("Package groundtruthAGM...")
     for gta_data in gta:
         Igt = Int8MultiArray()
         Igt.data = [int(gta_data[2]), int(gta_data[3]), int(gta_data[4])]
         bag.write('/groundtruth/sv_id', Igt)
-
 
     print("Package groundtruthIMAGE...")
     for stv_seq in range(STREET_VIEW):
@@ -156,7 +118,6 @@ def main(argv):
         Img.header.frame_id = 'streetview'
         bag.write('/groundtruth/image', Img)
 
-
     for bap_data in bap:
         bap_seq = bap_seq + 1
         bar = Barometer()
@@ -167,27 +128,11 @@ def main(argv):
         bar.header.frame_id = 'BarometricPressure'
         bag.write('/barometric_pressure', bar)
 
-
-    # print("packaging MAV images")
-    # for mavimage in range(1,MAVIMAGE):
-    #     print(mavimage)
-    #     img_cv = cv2.imread(sys.argv[1] + "/MAV Images/" + '{0:05d}'.format(mavimage) + ".jpg", 1)
-    #     br = CvBridge()
-    #     Img = Image()
-    #     Img = br.cv2_to_imgmsg(img_cv, "bgr8")
-    #     # print(type(Img))
-    #     Img.header.seq = mavimage
-    #     # Img.header.stamp = timestamp
-    #     Img.header.frame_id = 'camera'
-    #     bag.write('/camera/image', Img)
-
-
-    print("Packaging GPS and Caminfo")
+    print("Packaging GPS and cam_info")
     for gps_data in gps:
-        # print(int(gps_data[1]))
-        # On board GPS processing
+
         imgid = int(gps_data[1])
-        # gps_seq = gps_seq + 1
+
         utime = int(gps_data[0])
         timestamp = rospy.Time.from_sec(utime / 1e6)
 
@@ -203,45 +148,25 @@ def main(argv):
         Gps.longitude = float(gps_data[3])
         Gps.altitude = float(gps_data[4])
         bag.write('/gps', Gps, t=timestamp)
-        # print("gps")
-        # MAV image processing
 
-        # if int(gps_data[1]) <= MAVIMAGE:
-        #     img_cv = cv2.imread(sys.argv[1] + "/MAV Images/" + '{0:05d}'.format(int(gps_data[1])) + ".jpg", 1)
-        #
-        #     img_cv = cv2.resize(img_cv, MAVDIM, interpolation=cv2.INTER_AREA)
-        #
-        #     br = CvBridge()
-        #     print (gps_data[1])
-        #     Img = Image()
-        #     Img = br.cv2_to_imgmsg(img_cv, "bgr8")
-        #     # print(type(Img))
-        #     Img.header.seq = imgid
-        #     Img.header.stamp = timestamp
-        #     Img.header.frame_id = 'camera'
-        #     bag.write('/camera/image', Img, t=timestamp)
-        #
-        # if cal < 0:
-        #     Caminfo = CameraInfo()
-        #     cam_data = np.load(sys.argv[1] + '/calibration_data.npz')
-        #     Caminfo.R = [1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0]
-        #     Caminfo.P = [1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0]
-        #     Caminfo.D = np.asarray(cam_data['distCoeff']).reshape(-1)
-        #     Caminfo.K = np.asarray(cam_data['intrinsic_matrix']).reshape(-1)
-        #     Caminfo.binning_x = 1
-        #     Caminfo.binning_y = 1
-        #     img_cv_h, img_cv_w = img_cv.shape[:2]
-        #     Caminfo.width = img_cv_w
-        #     Caminfo.height = img_cv_h
-        #     Caminfo.distortion_model = 'plumb_bob'
-        #     bag.write('/camera/camera_info', Caminfo, t=timestamp)
-        #     cal = 0
-
-
+        if imgid <= MAVIMAGE and imgid % 3 == 0:
+            # write aerial image
+            img_seq = img_seq+1
+            img_cv = cv2.imread(sys.argv[1] + "/MAV Images/" + '{0:05d}'.format(int(imgid)) + ".jpg", 1)
+            img_cv = cv2.resize(img_cv, MAVDIM, interpolation=cv2.INTER_AREA)
+            cv2.imshow('1', img_cv)
+            br = CvBridge()
+            Img = Image()
+            Img = br.cv2_to_imgmsg(img_cv, "bgr8")
+            Img.header.seq = int(img_seq)
+            print(imgid)
+            Img.header.stamp = timestamp
+            Img.header.frame_id = 'camera'
+            bag.write('/camera/image', Img, t=timestamp)
 
     bag.close()
-
     return 0
+
 
 if __name__ == '__main__':
     sys.exit(main(sys.argv))
